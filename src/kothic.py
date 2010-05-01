@@ -25,6 +25,9 @@ import threading
 import time
 import Queue
 
+from debug import debug, Timer
+#debug = lambda a: None
+
 
 class Renderer(threading.Thread):
   def __init__(self, comm):
@@ -32,17 +35,18 @@ class Renderer(threading.Thread):
     threading.Thread.__init__(self)
 
   def run(self):
-    print ("Thread started")
+    debug("Thread started")
     self.tc = {}
     while(True):
       while(True):
         request = self.comm[0].get()
         if(self.comm[0].empty):
           break
-      print ("  got request:", request[:-1])
+#     debug("  got request:", request[:-1])
+      t = Timer("Rendering screen")
       res = RasterTile(request[2][0], request[2][1]) 
       res.update_surface(request[0][0], request[0][1], request[1], self.tc, request[3], self.comm[3])
-      print ("  render complete")
+      t.stop() 
       comm[1].put(res)
       comm[0].task_done()
       comm[2].queue_draw()
@@ -104,7 +108,7 @@ class Navigator:
     self.comm.append(threading.Lock())
 
   def motion_ev(self, widget, event):
-#   print("Motion")
+#		debug("Motion")
     if self.drag:
       self.dx = event.x - self.drag_x
       self.dy = event.y - self.drag_y
@@ -118,44 +122,44 @@ class Navigator:
     gtk.main_quit()
 
   def press_ev(self, widget, event):
-    print("Start drag")
+    debug("Start drag")
     if event.button == 1:
       self.drag = True
       self.drag_x = event.x
       self.drag_y = event.y
     elif event.button == 2:
-      print("Button2")
+      debug("Button2")
     elif event.button == 3:
-      print("Button3")
+      debug("Button3")
 
   def release_ev(self, widget, event):
     if event.button == 1:
-      print("Stop drag")
+      debug("Stop drag")
       self.drag = False
 #   print("ll:", self.latcenter, self.loncenter)
-      print("LL before: ",self.lat_c, self.lon_c)
-      print("dd: ",self.dx, self.dy)
+      debug("LL before: %s %s" % (self.lat_c, self.lon_c))
+      debug("dd: %s,%s "%(self.dx, self.dy))
       self.lat_c, self.lon_c = self.rastertile.screen2latlon(self.rastertile.w/2 - self.dx, self.rastertile.h/2 - self.dy);
 #     self.dx = self.dy = 0
       self.f = True
-      print("LL after: ",self.lat_c, self.lon_c)
+      debug("LL after: %s, %s" % (self.lat_c, self.lon_c)) 
       self.comm[0].put(((self.lat_c, self.lon_c), self.zoom, (self.width + self.border*2, self.height + self.border*2), self.style))
 #     widget.queue_draw()
 
   def scroll_ev(self, widget, event):
     if event.direction == gtk.gdk.SCROLL_UP:
       self.zoom *= 2
-      print("Zoom in")
+      debug("Zoom in")
       widget.queue_draw()
     elif event.direction == gtk.gdk.SCROLL_DOWN:
-      print("Zoom out")
+      debug("Zoom out")
 
   def expose_ev(self, widget, event):
 #   print("Expose")
-    time_start = time.time()
+    t1 = Timer("Expose event")
     self.comm[3].acquire()
     if(widget.allocation.width != self.width or widget.allocation.height != self.height ):
-      print("Rrresize!")
+      debug("Rrresize!")
       self.width = widget.allocation.width
       self.height = widget.allocation.height
       self.rastertile = None
@@ -168,7 +172,6 @@ class Navigator:
       self.comm[1].task_done()
     if nrt is not None:
       ort = self.rastertile
-#     nrt = self.comm[1].get()
       lat, lon = ort.screen2latlon(ort.w/2, ort.h/2)
       ox, oy = nrt.latlon2screen(lat, lon)
       ox -= nrt.w/2
@@ -177,7 +180,6 @@ class Navigator:
       self.drag_y += oy 
       self.dx -= ox 
       self.dy -= oy 
-      print (lat, lon, ox, oy)
       self.rastertile.offset_x = -ox
       self.rastertile.offset_y = -oy
       self.f = True
@@ -185,10 +187,10 @@ class Navigator:
 
     cr = widget.window.cairo_create()
     cr.set_source_surface(self.rastertile.surface, self.dx-self.border + self.rastertile.offset_x, self.dy - self.border + self.rastertile.offset_y)
-    time_before_paint = time.time()
+    t2 = Timer("Paint")
     cr.paint()
-    time_end = time.time()
-    print ("EXPOSE REDRAW: ", -time_start + time_end, "(paint: ", time_end - time_before_paint, ")" )
+    t1.stop()
+    t2.stop()
     self.comm[3].release()
 
   def main(self):
@@ -223,7 +225,7 @@ def load_tile(k, lock):
   try:
     f = open(key_to_filename(k))
   except IOError:
-    print "Failed open: %s" % key_to_filename(k)
+    debug("Failed open: %s" % key_to_filename(k))
     return {}
   t = {}
 
@@ -271,9 +273,7 @@ class RasterTile:
     cr = cairo.Context(self.surface)
     cr.rectangle(0, 0, self.w, self.h)
     cr.set_source_rgb(0.7, 0.7, 0.7)
-    tt = time.time()
     cr.fill()
-    print ("  fill: ", time.time() - tt)
     latmin, lonmin = self.screen2latlon(0, self.h)
     latmax, lonmax = self.screen2latlon(self.w, 0)
     latkey_min = int(latmin*100)
