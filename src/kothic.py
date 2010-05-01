@@ -211,15 +211,11 @@ def load_tile(k, lock):
     return {}
   t = {}
 
-  while True:
+  for line in f:
     if lock is not None:
       lock.acquire()
       lock.release()
-    str = f.readline()
-    if str is None or str == "":
-      break
-    str = str.rstrip("\n")
-    a = str.split(" ")
+    a = line.split(" ")
     w = Way(a[0], int(a[1]), int(a[2]), map(lambda x: float(x), a[3:]))
     t[w.id] = w 
   f.close()
