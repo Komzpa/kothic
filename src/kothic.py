@@ -239,6 +239,15 @@ class RasterTile:
   def latlon2screen(self, lat, lon):
     return (lon - self.lon_c)*self.lcc*self.zoom + self.w/2, -(lat - self.lat_c)*self.zoom + self.h/2
 
+  def swap(x):
+    return (x[1], x[0])
+    
+  def screen2lonlat(self, x, y):
+    return swap(self.screen2latlon(x, y))
+
+  def lonlat2screen(self, lon, lan):
+    return self.latlon2screen(lat, lon)
+
   def update_surface(self, lat, lon, zoom, tilecache, style, lock):
     self.zoom = zoom
     self.lat_c = lat
