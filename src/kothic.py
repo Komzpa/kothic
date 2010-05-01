@@ -204,8 +204,13 @@ def ways(t):
 
 def load_tile(k, lock):
 # print("loading tile: ", k)
-  f = open(key_to_filename(k))
+  try:
+    f = open(key_to_filename(k))
+  except IOError:
+    print "Failed open: %s" % key_to_filename(k)
+    return {}
   t = {}
+
   while True:
     if lock is not None:
       lock.acquire()
