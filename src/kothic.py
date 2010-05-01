@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-#use Cairo;
-#import cairo
-#use Gtk2 '-init';
 import pygtk
 pygtk.require('2.0')
 import gtk
@@ -12,26 +9,6 @@ import threading
 import time
 import Queue
 
-#use Glib qw(TRUE FALSE);
-#use Time::HiRes qw(gettimeofday tv_interval);
-#use strict;
-#use POSIX qw(ceil floor);
-#use style qw(@style);
-#use navigator_lib;
-
-#my $dbname = "moscow.db";
-#my $dbargs = {AutoCommit => 0,
-#	PrintError => 1,
-#};
-#
-
-#my $latmin;
-#my $latmax;
-#my $lonmin;
-#my $lonmax;
-
-#my $latcenter = 55.6304; 
-#my $loncenter = 37.49305; 
 
 class Renderer(threading.Thread):
 	def __init__(self, comm):
