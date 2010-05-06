@@ -122,8 +122,8 @@ class Navigator:
     gtk.main_quit()
 
   def press_ev(self, widget, event):
-    debug("Start drag")
     if event.button == 1:
+      debug("Start drag")
       self.drag = True
       self.drag_x = event.x
       self.drag_y = event.y
@@ -150,8 +150,10 @@ class Navigator:
     if event.direction == gtk.gdk.SCROLL_UP:
       self.zoom *= 2
       debug("Zoom in")
-      widget.queue_draw()
+      self.comm[0].put(((self.lat_c, self.lon_c), self.zoom, (self.width + self.border*2, self.height + self.border*2), self.style))
     elif event.direction == gtk.gdk.SCROLL_DOWN:
+      self.zoom /= 2
+      self.comm[0].put(((self.lat_c, self.lon_c), self.zoom, (self.width + self.border*2, self.height + self.border*2), self.style))
       debug("Zoom out")
 
   def expose_ev(self, widget, event):
