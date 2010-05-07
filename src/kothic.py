@@ -103,7 +103,9 @@ class Navigator:
 #   self.surface = cairo.ImageSurfaceicreate(gtk.RGB24, self.width, self.height)
     self.window.set_size_request(self.width, self.height)
     self.window.add(da)
+    self.window.add_events(gtk.gdk.KEY_PRESS_MASK)
     self.window.connect("delete_event", self.delete_ev)
+    self.window.connect("key_press_event", self.key_press_win_ev)
     self.comm.append(da)
     self.comm.append(threading.Lock())
 
@@ -153,6 +155,15 @@ class Navigator:
     elif event.direction == gtk.gdk.SCROLL_DOWN:
       debug("Zoom out")
       self.do_zoom(0.5)
+
+  def key_press_win_ev(self, widget, event):
+    debug("Keypress win: %s" % event.hardware_keycode)
+    if event.hardware_keycode == 20:
+      self.do_zoom(0.5)
+    elif event.hardware_keycode == 21:
+      self.do_zoom(2)
+    return True 
+
         
   def expose_ev(self, widget, event):
 #   print("Expose")
