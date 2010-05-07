@@ -148,14 +148,12 @@ class Navigator:
 
   def scroll_ev(self, widget, event):
     if event.direction == gtk.gdk.SCROLL_UP:
-      self.zoom *= 2
       debug("Zoom in")
-      self.comm[0].put(((self.lat_c, self.lon_c), self.zoom, (self.width + self.border*2, self.height + self.border*2), self.style))
+      self.do_zoom(2, widget)
     elif event.direction == gtk.gdk.SCROLL_DOWN:
-      self.zoom /= 2
-      self.comm[0].put(((self.lat_c, self.lon_c), self.zoom, (self.width + self.border*2, self.height + self.border*2), self.style))
       debug("Zoom out")
-
+      self.do_zoom(0.5, widget)
+        
   def expose_ev(self, widget, event):
 #   print("Expose")
     t1 = Timer("Expose event")
@@ -188,12 +186,22 @@ class Navigator:
       self.rastertile = nrt
 
     cr = widget.window.cairo_create()
-    cr.set_source_surface(self.rastertile.surface, self.dx-self.border + self.rastertile.offset_x, self.dy - self.border + self.rastertile.offset_y)
+    sc = self.zoom/self.rastertile.zoom
+    dx = self.dx/sc - self.border/sc - 0.5*(self.rastertile.w - self.rastertile.w/sc) + self.rastertile.offset_x/sc
+    dy = self.dy/sc - self.border/sc - 0.5*(self.rastertile.h - self.rastertile.h/sc) + self.rastertile.offset_y/sc
+    debug("ZOOM: sc=%s b=%s %s %s %s %s: %s %s" % (sc, self.border, self.dx, self.dy, self.rastertile.offset_x, self.rastertile.offset_y, dx, dy))
+    cr.scale(sc, sc)
+    cr.set_source_surface(self.rastertile.surface, dx, dy)
     t2 = Timer("Paint")
     cr.paint()
     t1.stop()
     t2.stop()
     self.comm[3].release()
+
+  def do_zoom(self, a, widget):
+    self.zoom *= a
+    self.comm[0].put(((self.lat_c, self.lon_c), self.zoom, (self.width + self.border*2, self.height + self.border*2), self.style))
+    widget.queue_draw()
 
   def main(self):
     self.window.show_all()
