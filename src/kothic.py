@@ -92,7 +92,7 @@ class Navigator:
     da.add_events(gtk.gdk.POINTER_MOTION_MASK)
     da.add_events(gtk.gdk.BUTTON_PRESS_MASK)
     da.add_events(gtk.gdk.BUTTON_RELEASE_MASK)
-    da.add_events(gtk.gdk.SCROLL)
+    da.add_events(gtk.gdk.SCROLL_MASK)
 #   self.window.add_events(gtk.gdk.BUTTON1_MOTION_MASK)
     da.connect("expose_event",self.expose_ev)
     da.connect("motion_notify_event",self.motion_ev)
