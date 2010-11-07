@@ -32,7 +32,7 @@ maxzoom = 19
 
 
 style = MapCSS(minzoom, maxzoom)     #zoom levels
-style.parse(open("styles/osmosnimki-maps.mapcss","r").read())
+style.parse(open("styles/gisrussa.mapcss","r").read())
 
 mapniksheet = {}
 
@@ -40,26 +40,168 @@ mapniksheet = {}
 
 
 for zoom in range (minzoom, maxzoom):
-  mapniksheet[zoom] = {}
+  mapniksheet[zoom] = []#{}
   zsheet = mapniksheet[zoom]
   for chooser in style.choosers:
     if chooser.get_sql_hints(chooser.ruleChains[0][0].subject, zoom)[0]:
-     # sys.stderr.write(str(chooser.get_sql_hints(chooser.ruleChains[0][0].subject, zoom)[0])+"\n")
       styles = chooser.styles[0]
-      zindex = styles.get("z-index",0)
-      if zindex not in zsheet:
-        zsheet[zindex] = []
-      chooser_entry = {}
-      zsheet[zindex].append(chooser_entry)
-      chooser_entry["sql"] = "("+ chooser.get_sql_hints(chooser.ruleChains[0][0].subject,zoom)[1] +")"
-      chooser_entry["style"] = styles
-      chooser_entry["type"] = chooser.ruleChains[0][0].subject
-      chooser_entry["rule"] = [i.conditions for i in chooser.ruleChains[0] if i.test_zoom(zoom)]
-      chooser_entry["chooser"] = chooser
+      # unfold foo, bar {...} -> foo {...} bar {...}
+      for rc in chooser.ruleChains[0]:
+        if rc.test_zoom(zoom):
+          #zindex = styles.get("z-index",0)
+          #if zindex not in zsheet:
+          #  zsheet[zindex] = []
+          chooser_entry = {}
+          chooser_entry["sql"] = "("+ chooser.get_sql_hints(rc.subject,zoom)[1] +")"
+          chooser_entry["style"] = styles
+          chooser_entry["type"] = rc.subject.lower()
+          #sys.stderr.write(str(rc))
+          chooser_entry["rule"] = rc.conditions
+          chooser_entry["chooser"] = chooser
+          ## Unfold * -> node,line,area; way-> area,line
+          if chooser_entry["type"] == "*":
+            chooser_entry["type"] = "node"
+            zsheet.append(chooser_entry.copy())
+            chooser_entry["type"] = "way"
+          if chooser_entry["type"] == "way":
+            chooser_entry["type"] = "line"
+            zsheet.append(chooser_entry.copy())
+            chooser_entry["type"] = "area"
+            zsheet.append(chooser_entry.copy())
+            chooser_entry["type"] = "way"
+          elif chooser_entry["type"] in ("area", "node", "line"):
+            zsheet.append(chooser_entry.copy())
+        
+
+ms2 = {}
+
+def rule_list_and (lst, tr):
+  """
+  and's list of rules with a rule tr
+  returns new list or False if r&rules is always false.
+  """
+  if lst == False:
+    return False
+  r = lst[:]
+  rap = False
+  for tt in lst:
+    #print tr, tt
+    tp = tr.and_with(tt)
+   # print tp
+    if tp:
+      if len(tp) == 1: # can be 1 or 2
+        if tp[0] != tr and tp[0] != tt:
+          r.remove(tr)
+          r.remove(tt)
+          r.append(tp[0])
+          rap = True
+        elif tp[0] == tr:
+         # print r, tr
+          r.remove(tt)
+          #rap = True
+        elif tp[0] == tt:
+          rap = True
+      
+    else:
+      return False
+  if not rap:
+    #print "bad", tr
+    r.append(tr)
+  return r
+
+
+  
+for zoom in range (minzoom, maxzoom):
+  ms2[zoom] = []
+  zsheet = ms2[zoom]
+  zsheet.append(mapniksheet[zoom].pop(0))
+  for chooser in mapniksheet[zoom]:
+    zs2 = [] # where we add new things
+    merged = False
+    for c2 in zsheet:
+      #print c2["type"] == chooser["type"]
+      if c2["type"] == chooser["type"]:
+        #print c2
+        a = chooser["rule"]
+        b = c2["rule"]
+        #print a
+        #print b
+        
+        ## Trying to merge two rules
+        ## in result, we'll get three: a&b, a&!b, !a&b
+        # a&b
+        r = a[:]
+        
+        for ib in b:
+          
+          r = rule_list_and(r, ib)
+          if not r:
+            break
+        else:
+          ce = c2.copy()
+          ce["rule"] = r
+          #print "ab",r,a,b
+          for prop in chooser["style"]:
+            ce["style"][prop] = chooser["style"][prop]
+          zs2.append(ce)
+          merged = True
+        # a&!b
+        nb = [i.inverse() for i in b]
+        for ib in nb:
+          r = rule_list_and(a, ib)
+          if r:
+            ce = chooser.copy()
+            ce["rule"] = r
+            #print "a!b",r,a,nb
+            zs2.append(ce)
+            merged = True
+        # !a&b
+        na = [i.inverse() for i in a]
+        for ia in na:
+          r = rule_list_and(b, ia)
+          if r:
+            ce = c2.copy()
+            ce["rule"] = r
+            #print "!ab",r,na,b
+            zs2.append(ce)
+            merged = True
+      if not merged:
+        zs2.append(chooser)
+      ms2[zoom] = zs2
+      zsheet = ms2[zoom]
+      
+        
+
+
+        
+        #na = [i.inverse for i in c2["rule"]]
+        #rs = []
+        #for added in na:
+          #if 
+    #zsheet.append(chooser)
+
+# calculate evals where possible
+
+# drop useless properties
+
+# split things into lines, polygons, texts, shields...
+
+# merge back what's possible
 
 
 
-
+mapniksheet = {}
+for zoom in range (minzoom, maxzoom):
+  mapniksheet[zoom] = {}
+  zsheet = mapniksheet[zoom]
+  for chooser in ms2[zoom]:
+    zindex = float(chooser["style"].get("z-index",0))
+    chooser["sql"] = "("+ " AND ".join([i.get_sql()[1] for i in chooser["rule"]]) +")"
+    chooser["rule"] = [chooser["rule"]]
+    if zindex not in zsheet:
+      zsheet[zindex] = []
+    zsheet[zindex].append(chooser)
+   
 
 
 
